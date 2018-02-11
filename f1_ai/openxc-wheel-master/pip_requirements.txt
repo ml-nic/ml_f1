@@ -1,0 +1,1 @@
+python-pygame -e git+https://github.com/TripleSpeeder/LTWheelConf
