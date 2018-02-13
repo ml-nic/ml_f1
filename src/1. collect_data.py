@@ -5,7 +5,8 @@ import time
 #from getkeys import key_check
 import os
 from wheel_control import control
-
+import win32api as wapi
+import time
 
 steering_angle = 0      #between -MAX_STEERING_ANGLE and MAX_STEERING_ANGLE
 accelerator = -100      #between -100 (no accleration) and 100 (max accleration)
@@ -73,8 +74,6 @@ def main(file_name, starting_value):
                 starting_value += 1
                 file_name = 'C:/Users/Nicolas/IdeaProjects/ml_f1/data/training_data-{}.npy'.format(starting_value)
 
-        # TODO: implement pause
-        """
         keys = key_check()
         if 'P' in keys:
             if paused:
@@ -85,6 +84,15 @@ def main(file_name, starting_value):
                 print('Pausing!')
                 paused = True
                 time.sleep(1)
-        """
+
+
+keyList = ["\b", "P"]
+
+def key_check():
+    keys = []
+    for key in keyList:
+        if wapi.GetAsyncKeyState(ord(key)):
+            keys.append(key)
+    return keys
 
 main(file_name, starting_value)
