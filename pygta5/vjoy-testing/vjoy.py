@@ -10,49 +10,48 @@
 
 import ctypes
 import struct, time
-import numpy as np
 
 CONST_DLL_VJOY = "vJoyInterface.dll"
+MAX = 32767
+MID = 16383
+
 
 class vJoy(object):
-    def __init__(self, reference = 1):
+    def __init__(self, reference=1):
         self.handle = None
-        self.dll = ctypes.CDLL( CONST_DLL_VJOY )
+        self.dll = ctypes.CDLL(CONST_DLL_VJOY)
         self.reference = reference
         self.acquired = False
-        
+
     def open(self):
-        if self.dll.AcquireVJD( self.reference ):
+        if self.dll.AcquireVJD(self.reference):
             self.acquired = True
             return True
         return False
-    
+
     def close(self):
-        if self.dll.RelinquishVJD( self.reference ):
+        if self.dll.RelinquishVJD(self.reference):
             self.acquired = False
             return True
         return False
-    
-    def generateJoystickPosition(self, 
-        wThrottle = 0, wRudder = 0, wAileron = 0,
 
-        # left thb x        left thb y     left trigger
-        wAxisX = 16393,   wAxisY = 16393,   wAxisZ = 0,
-
-        # right thb x       right thb y        right trigger
-        wAxisXRot = 16393, wAxisYRot = 16393, wAxisZRot = 0,
-
-        # ???         ???        ???
-        wSlider = 0, wDial = 0, wWheel = 0,
-        # ???         ???        ???
-        wAxisVX = 0, wAxisVY = 0, wAxisVZ = 0,
-        # ???         ???                ???                   
-        wAxisVBRX = 0, wAxisVBRY = 0, wAxisVBRZ = 0,
-        # 1 = a
-        # 2 = b  3 = a+b ??
-        # 4 = x  5 = x+a ?? 6 = x+b
-        # 8 = y
-        lButtons = 0, bHats = 0, bHatsEx1 = 0, bHatsEx2 = 0, bHatsEx3 = 0):
+    def generateJoystickPosition(self,
+                                 wThrottle=0, wRudder=0, wAileron=0,
+                                 # left thb x        left thb y     left trigger
+                                 wAxisX=MID, wAxisY=MAX, wAxisZ=0,
+                                 # right thb x       right thb y        right trigger
+                                 wAxisXRot=0, wAxisYRot=0, wAxisZRot=MAX,
+                                 # ???         ???        ???
+                                 wSlider=0, wDial=0, wWheel=0,
+                                 # ???         ???        ???
+                                 wAxisVX=0, wAxisVY=0, wAxisVZ=0,
+                                 # ???         ???                ???
+                                 wAxisVBRX=0, wAxisVBRY=0, wAxisVBRZ=0,
+                                 # 1 = a
+                                 # 2 = b  3 = a+b ??
+                                 # 4 = x  5 = x+a ?? 6 = x+b
+                                 # 8 = y
+                                 lButtons=0, bHats=0, bHatsEx1=0, bHatsEx2=0, bHatsEx3=0):
         """
         typedef struct _JOYSTICK_POSITION
         {
@@ -83,171 +82,148 @@ class vJoy(object):
         } JOYSTICK_POSITION, *PJOYSTICK_POSITION;
         """
         joyPosFormat = "BlllllllllllllllllllIIII"
-        pos = struct.pack( joyPosFormat, self.reference, wThrottle, wRudder,
-                                   wAileron, wAxisX, wAxisY, wAxisZ, wAxisXRot, wAxisYRot,
-                                   wAxisZRot, wSlider, wDial, wWheel, wAxisVX, wAxisVY, wAxisVZ,
-                                   wAxisVBRX, wAxisVBRY, wAxisVBRZ, lButtons, bHats, bHatsEx1, bHatsEx2, bHatsEx3 )
+        pos = struct.pack(joyPosFormat, self.reference, wThrottle, wRudder,
+                          wAileron, wAxisX, wAxisY, wAxisZ, wAxisXRot, wAxisYRot,
+                          wAxisZRot, wSlider, wDial, wWheel, wAxisVX, wAxisVY, wAxisVZ,
+                          wAxisVBRX, wAxisVBRY, wAxisVBRZ, lButtons, bHats, bHatsEx1, bHatsEx2, bHatsEx3)
         return pos
+
     def update(self, joystickPosition):
-        if self.dll.UpdateVJD( self.reference, joystickPosition ):
+        if self.dll.UpdateVJD(self.reference, joystickPosition):
             return True
         return False
-    
-    #Not working, send buttons one by one
-    def sendButtons( self, bState ):
-        joyPosition = self.generateJoystickPosition( lButtons = bState )
-        return self.update( joyPosition )
-    
-    def setButton( self, index, state ):
-        if self.dll.SetBtn( state, self.reference, index ):
-            return True
-        return False
-                
-
-vj = vJoy()
-
-# valueX, valueY between -1.0 and 1.0
-# scale between 0 and 16000
-def setJoy(valueX, valueY, scale):
-    xPos = int(valueX*scale)
-    yPos = int(valueY*scale)
-    joystickPosition = vj.generateJoystickPosition(wAxisX = 16000+xPos, wAxisY = 16000+yPos)
-    vj.update(joystickPosition)
 
 
-def test():
+def all_reset(vj):
     vj.open()
-    print("vj opening", flush=True)
-    btn = 1
-    time.sleep(2)
-    print("sending axes", flush=True)
-    for i in range(0,1000,1):
-        #vj.sendButtons( btn << i )
-        xPos = int(10000.0*np.sin(2.0*np.pi*i/1000))
-        yPos = int(10000.0*np.sin(2.0*np.pi*i/100))
-        print(xPos, flush=True)
-        joystickPosition = vj.generateJoystickPosition(wAxisX = 16000+xPos, wAxisY = 16000+yPos)
+    joystickPosition = vj.generateJoystickPosition(wAxisX=16383)
+    joystickPosition = vj.generateJoystickPosition(wAxisXRot=0)
+    joystickPosition = vj.generateJoystickPosition(wAxisY=MAX)
+    joystickPosition = vj.generateJoystickPosition(wAxisYRot=0)
+    joystickPosition = vj.generateJoystickPosition(wAxisZ=0)
+    joystickPosition = vj.generateJoystickPosition(wAxisZRot=MAX)
+    vj.update(joystickPosition)
+    vj.close()
+
+
+def brake_reset(vj, open=True):
+    if open:
+        vj.open()
+    joystickPosition = vj.generateJoystickPosition(wAxisZRot=MAX)
+    vj.update(joystickPosition)
+    if open:
+        vj.close()
+
+
+def brake(vj, value=-1):
+    vj.open()
+    if value == -1:
+        vj.open()
+        for i in reversed(range(0, 33786)):
+            print(i)
+            joystickPosition = vj.generateJoystickPosition(wAxisZRot=i)
+            vj.update(joystickPosition)
+        brake_reset(open=False)
+    else:
+        joystickPosition = vj.generateJoystickPosition(wAxisZRot=0)
         vj.update(joystickPosition)
-        time.sleep( 0.01 )
-    joystickPosition = vj.generateJoystickPosition(wAxisX = 16000, wAxisY = 16000)
-    vj.update(joystickPosition)
-    vj.sendButtons(0)
-    print("vj closing", flush=True)
     vj.close()
-    
 
-def test2():
-    time.sleep(3)
-    print("vj opening", flush=True)
+
+def throttle_reset(vj, open=True):
+    if open:
+        vj.open()
+    joystickPosition = vj.generateJoystickPosition(wAxisY=MAX)
+    vj.update(joystickPosition)
+    if open:
+        vj.close()
+
+
+def throttle(vj, value=-1):
     vj.open()
-
-    time.sleep(1)
-
-    print("sending axes", flush=True)
-
-    # valueX, valueY between -1.0 and 1.0
-    # scale between 0 and 16000
-    scale = 10000.0
-    for i in range(0,1000,1):
-        xPos = np.sin(2.0*np.pi*i/1000)
-        yPos = np.sin(2.0*np.pi*i/100)
-        setJoy(xPos, yPos, scale)
-        time.sleep(0.01)
-
-    print("vj closing", flush=True)
-    
-    reset = vj.generateJoystickPosition()
-    setJoy(0, 0, scale)
+    if value == -1:
+        vj.open()
+        for i in reversed(range(MAX)):
+            print(i)
+            joystickPosition = vj.generateJoystickPosition(wAxisY=i)
+            vj.update(joystickPosition)
+        throttle_reset(open=False)
+    else:
+        joystickPosition = vj.generateJoystickPosition(wAxisY=0)
+        vj.update(joystickPosition)
     vj.close()
 
 
-
-def test3():
-    time.sleep(3)
+def whole_right_and_reset(vj):
     vj.open()
-    print("vj opening", flush=True)
-    time.sleep(2)
-    print("sending axes", flush=True)
-    joystickPosition = vj.generateJoystickPosition(wThrottle = 32000, wAxisX = 16000, wAxisY = 16000)
-    vj.update(joystickPosition)
-    time.sleep(5)
-    joystickPosition = vj.generateJoystickPosition()
-    vj.update(joystickPosition)
-    #vj.sendButtons(0)
-    print("vj closing", flush=True)
+    for i in range(16383, 33786):
+        print(i)
+        joystickPosition = vj.generateJoystickPosition(wAxisX=i)
+        vj.update(joystickPosition)
+    reset_wheel(open=False)
     vj.close()
 
 
+def reset_wheel(vj, open=True):
+    if open:
+        vj.open()
+    joystickPosition = vj.generateJoystickPosition(wAxisX=MID)
+    vj.update(joystickPosition)
+    if open:
+        vj.close()
 
 
-    
-# DOES change view. 
-def test5():
-    time.sleep(3)
+def whole_left_and_reset(vj, value=None):
     vj.open()
-    print("vj opening", flush=True)
-    time.sleep(2)
-    print("sending axes", flush=True)
-    joystickPosition = vj.generateJoystickPosition(wAxisX = 8000, wAxisY = 16000)
-    vj.update(joystickPosition)
-    time.sleep(5)
-    joystickPosition = vj.generateJoystickPosition(wAxisX = 16000, wAxisY = 16000)
-    vj.update(joystickPosition)
-    #vj.sendButtons(0)
-    print("vj closing", flush=True)
+    for i in reversed(range(16383)):
+        print(i)
+        joystickPosition = vj.generateJoystickPosition(wAxisX=i)
+        vj.update(joystickPosition)
+    reset_wheel(open=False)
     vj.close()
-    
 
 
+def set_all(vj, wheel, acclerate, brake):
+    """
+    steering_angle = 0  # -1 (left) to 1 (right)
+    accelerator = 1  # 1 no acceleration to -1 full acceleration
+    brake = 1  # 1 no brake to -1 full brake
 
+    wheel -1 => 0
+    wheel 0 => MID
+    wheel 1  => MAX
 
-def look_left():
+    accelerator 1 => MAX
+    accelerator -1 => 0
+
+    brake 1 => MAX
+    brake -1 => 0
+    """
+    # scale to output format:
+
+    def scale(old_value=None, old_min=None, old_max=None, new_max=None, new_min=None):
+        return ((old_value - old_min) / (old_max - old_min)) * (new_max - new_min) + new_min
+
+    wheel = scale(old_value=wheel, old_min=-1, old_max=1, new_max=MAX, new_min=0)
+    acclerate = scale(old_value=acclerate, old_min=-1, old_max=1, new_max=MAX, new_min=0)
+    brake = scale(old_value=brake, old_min=-1, old_max=1, new_max=MAX, new_min=0)
+
     vj.open()
-    joystickPosition = vj.generateJoystickPosition(wAxisXRot = 0)
-    vj.update(joystickPosition)
-    vj.close()
-
-def look_right():
-    vj.open()
-    joystickPosition = vj.generateJoystickPosition(wAxisXRot = 32786)
-    vj.update(joystickPosition)
-    vj.close()
-
-def throttle():
-    vj.open()
-    joystickPosition = vj.generateJoystickPosition(wAxisZRot = 32786)
+    joystickPosition = vj.generateJoystickPosition(wAxisX=wheel, wAxisY=acclerate, wAxisZRot=brake)
     vj.update(joystickPosition)
     vj.close()
 
 
-def reverse_brake():
-    vj.open()
-    joystickPosition = vj.generateJoystickPosition(wAxisZ = 32786)
-    vj.update(joystickPosition)
-    vj.close()
-    
 
-def ultimate_release():
-    vj.open()
-    joystickPosition = vj.generateJoystickPosition()
-    vj.update(joystickPosition)
-    time.sleep(0.001)
-    vj.close()
-    
-
-
+{"left/right": "wAxisX", "throttle": "wAxisY", "brake": "wAxisZRot"}
 if __name__ == '__main__':
 
-    for i in reversed(range(1,4)):
-        print(i)
-        time.sleep(1)
-    
-    for i in range(200):
-        reverse_brake()
-        time.sleep(0.01)
+    while (True):
+        for i in reversed(range(1, 3)):
+            print(i)
+            time.sleep(1)
 
-    ultimate_release()
-
-    
-        
-        
+        vj.open()
+        joystickPosition = vj.generateJoystickPosition(wAxisZ=32000)
+        vj.update(joystickPosition)
+        vj.close()
